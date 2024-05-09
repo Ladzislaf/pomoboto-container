@@ -101,13 +101,7 @@ const startPomoBoto = () => {
 				);
 			} else if (message === '/menu') {
 				return showMenuKeyboard(chatId);
-			} else if (message === 'Start focus session') {
-				return PomoBoto.sendMessage(chatId, 'Starting...');
-			} else if (message === 'Close menu') {
-				return PomoBoto.sendMessage(chatId, 'Menu closed', {
-					reply_markup: { remove_keyboard: true },
-				});
-			} else if (message === 'help') {
+			} else if (message === '/help') {
 				return PomoBoto.sendMessage(chatId, "Command's description here... [In development]");
 			}
 
