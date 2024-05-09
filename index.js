@@ -1,6 +1,16 @@
 require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
-const { CronJob } = require ('cron');
+const { CronJob } = require('cron');
+const http = require('http');
+
+const server = http.createServer((req, res) => {
+	res.writeHead(200, { 'Content-Type': 'text/plain' });
+	res.end('Hello World!');
+});
+
+server.listen(5000, () => {
+	console.log('Server running');
+});
 
 const PomoBoto = new TelegramBot(process.env.API_KEY, { polling: true });
 
@@ -161,7 +171,7 @@ const startPomoBoto = () => {
 				});
 			} else if (ctx.data === 'showSettings') {
 				// TODO show all user stats
-				return
+				return;
 			} else if (ctx.data === 'closeMenu') {
 				await PomoBoto.deleteMessage(chatId, ctx.message.message_id);
 				return PomoBoto.deleteMessage(chatId, ctx.message.message_id - 1);
