@@ -2,7 +2,7 @@ const { CronJob } = require('cron');
 const https = require('https');
 
 const job = new CronJob(
-	'* */14 * * * *',
+	'*/14 * * * *',
 	function () {
 		console.log('Restarting server...');
 
