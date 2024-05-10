@@ -60,8 +60,8 @@ const startFocus = async (userId, chatId) => {
 
 		setTimeout(async () => {
 			return bot.sendMessage(chatId, `Break finished! Start focus session from the menu now!`);
-		}, breakPeriod * 15 * 1000);
-	}, focusPeriod * 15 * 1000);
+		}, breakPeriod * 60 * 1000);
+	}, focusPeriod * 60 * 1000);
 };
 
 const startPomoBoto = () => {
