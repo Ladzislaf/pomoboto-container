@@ -2,7 +2,6 @@ require('dotenv').config();
 const TelegramBot = require('node-telegram-bot-api');
 const { CronJob } = require('cron');
 const http = require('http');
-require('./cron');
 
 const server = http.createServer((req, res) => {
 	res.writeHead(200, { 'Content-Type': 'text/plain' });
