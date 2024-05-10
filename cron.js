@@ -1,14 +1,12 @@
 const { CronJob } = require('cron');
-const http = require('http');
-
-console.log(process.env.BACKEND_URL);
+const https = require('http');
 
 const job = new CronJob(
 	'* */14 * * * *',
 	function () {
 		console.log('Restarting server...');
 
-		http
+		https
 			.get(process.env.BACKEND_URL, (res) => {
 				if (res.statusCode === 200) {
 					console.log('Server restarted');
