@@ -17,10 +17,10 @@ const bot = new TelegramBot(process.env.API_KEY, { polling: true });
 
 class UserSettings {
 	constructor() {
-		this.focusPeriod = 2; // mins
-		this.breakPeriod = 1; // mins
+		this.focusPeriod = process.env.DEFAULT_FOCUS_PERIOD; // mins
+		this.breakPeriod = process.env.DEFAULT_BREAK_PERIOD; // mins
 		this.todayStreak = 0; // mins
-		this.dayGoal = 3; // hours
+		this.dayGoal = process.env.DEFAULT_DAY_GOAL; // hours
 		this.daysStreak = 0; // days
 	}
 }
