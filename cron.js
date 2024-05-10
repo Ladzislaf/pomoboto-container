@@ -1,5 +1,5 @@
 const { CronJob } = require('cron');
-const https = require('http');
+const https = require('https');
 
 const job = new CronJob(
 	'* */14 * * * *',
