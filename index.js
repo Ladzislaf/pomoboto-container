@@ -1,179 +1,116 @@
-require('dotenv').config();
-const TelegramBot = require('node-telegram-bot-api');
-const { CronJob } = require('cron');
-const http = require('http');
+import { Telegraf, Markup, Scenes, session } from 'telegraf';
+import streakJob from './cron.js';
+import dotenv from 'dotenv';
+import server from './server.js';
+import db from './db.js';
+import { changeFocusPeriodScene, changeBreakPeriodScene, changeDayGoalScene, includeWeekendsScene } from './scenes.js';
 
-const server = http.createServer((req, res) => {
-	res.writeHead(200, { 'Content-Type': 'text/plain' });
-	res.end('Hello World!');
+dotenv.config();
+server.start();
+streakJob.start();
+
+const bot = new Telegraf(process.env.BOT_TOKEN);
+const stage = new Scenes.Stage([changeFocusPeriodScene, changeBreakPeriodScene, changeDayGoalScene, includeWeekendsScene]);
+
+bot.use(session());
+bot.use(stage.middleware());
+
+bot.start(async (ctx) => {
+	await showMenuKeyboard(ctx);
+	await db.createNewUser(ctx.from.id);
 });
 
-server.listen(5000, () => {
-	console.log('Server running');
+bot.telegram.setMyCommands([
+	{ command: '/start', description: 'Restart bot' },
+	{ command: '/menu', description: 'Display bot menu' },
+	{ command: '/playlist', description: 'Spotify playlist' },
+	{ command: '/help', description: 'Help' },
+]);
+
+bot.command('menu', (ctx) => {
+	return showMenuKeyboard(ctx);
 });
 
-const bot = new TelegramBot(process.env.API_KEY, { polling: true });
-
-class UserSettings {
-	constructor() {
-		this.focusPeriod = process.env.DEFAULT_FOCUS_PERIOD; // mins
-		this.breakPeriod = process.env.DEFAULT_BREAK_PERIOD; // mins
-		this.todayStreak = 0; // mins
-		this.dayGoal = process.env.DEFAULT_DAY_GOAL; // hours
-		this.daysStreak = 0; // days
-	}
-}
-
-const Users = {};
-
-const showMenuKeyboard = (chatId) => {
-	return bot.sendMessage(chatId, `Bot menu:`, {
-		reply_markup: {
-			inline_keyboard: [
-				[{ text: 'Start focus session', callback_data: 'startFocus' }],
-				[
-					{ text: 'Focus period', callback_data: 'focusPeriod' },
-					{ text: 'Break period', callback_data: 'breakPeriod' },
-				],
-				[
-					{ text: 'Day goal', callback_data: 'dayGoal' },
-					{ text: 'Show settings', callback_data: 'showSettings' },
-				],
-				[{ text: 'Close menu', callback_data: 'closeMenu' }],
-			],
-		},
+bot.command('playlist', (ctx) => {
+	return ctx.reply('To focus better, you can use a spotify [Playlist](https://open.spotify.com/playlist/0vvXsWCC9xrXsKd4FyS8kM?si=83d9e98fa29a48cd)', {
+		parse_mode: 'MarkdownV2',
 	});
-};
+});
 
-const startFocus = async (userId, chatId) => {
-	const focusPeriod = Users[userId].focusPeriod;
-	const breakPeriod = Users[userId].breakPeriod;
-	await bot.sendMessage(chatId, `Focus session started! (${focusPeriod} mins)`);
+bot.command('help', (ctx) => {
+	return ctx.reply("Command's description here... [In development]");
+});
+
+bot.command('menu', (ctx) => {
+	return showMenuKeyboard(ctx);
+});
+
+bot.action('startFocus', async (ctx) => {
+	const { focusPeriod, breakPeriod, todayStreak, dayGoal, dayStreak } = await db.getUserSettings(ctx.from.id);
+	await ctx.reply(`Focus session started! (${focusPeriod} mins)`);
+	await ctx.answerCbQuery('Focus!');
 
 	setTimeout(async () => {
-		await bot.sendMessage(chatId, `Focus session finished! Have a break! (${breakPeriod} mins)`);
-		Users[userId].todayStreak += focusPeriod;
-		if (Users[userId].todayStreak >= Users[userId].dayGoal) {
+		await ctx.reply(`Focus session finished! Have a break! (${breakPeriod} mins)`);
+		await db.updateUserSettings(ctx.from.id, 'todayStreak', todayStreak + focusPeriod);
+		if (todayStreak + focusPeriod >= dayGoal) {
 			Users[userId].daysStreak++;
+			await db.updateUserSettings(ctx.from.id, 'dayStreak', dayStreak + 1);
 		}
-
 		setTimeout(async () => {
-			return bot.sendMessage(chatId, `Break finished! Start focus session from the menu now!`);
+			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
 		}, breakPeriod * 60 * 1000);
 	}, focusPeriod * 60 * 1000);
-};
+});
 
-const startPomoBoto = () => {
-	bot.setMyCommands([
-		{ command: '/menu', description: 'Display bot menu' },
-		{ command: '/playlist', description: 'Spotify playlist' },
-		{ command: '/help', description: 'Help' },
-	]);
+bot.action('focusPeriod', async (ctx) => {
+	await ctx.scene.enter('changeFocusPeriod');
+	return ctx.answerCbQuery('Focus period.');
+});
 
-	bot.on('message', async (msg) => {
-		const message = msg.text;
-		const chatId = msg.chat.id;
-		const userId = msg.from.id;
+bot.action('breakPeriod', async (ctx) => {
+	await ctx.scene.enter('changeBreakPeriod');
+	return ctx.answerCbQuery('Break period.');
+});
 
-		try {
-			if (message === '/start') {
-				if (!Users[userId]) {
-					Users[userId] = new UserSettings();
-				}
-				new CronJob(
-					'0 0 * * * *',
-					function () {
-						if (Users[userId].todayStreak < Users[userId].dayGoal) {
-							Users[userId].daysStreak = 0;
-						}
-					},
-					null,
-					true
-				);
-				return showMenuKeyboard(chatId);
-			} else if (message === '/playlist') {
-				return bot.sendMessage(
-					chatId,
-					'To focus better, you can use a spotify [Playlist](https://open.spotify.com/playlist/0vvXsWCC9xrXsKd4FyS8kM?si=83d9e98fa29a48cd)',
-					{
-						parse_mode: 'MarkdownV2',
-					}
-				);
-			} else if (message === '/menu') {
-				return showMenuKeyboard(chatId);
-			} else if (message === '/help') {
-				return bot.sendMessage(chatId, "Command's description here... [In development]");
-			}
+bot.action('dayGoal', async (ctx) => {
+	await ctx.scene.enter('changeDayGoal');
+	return ctx.answerCbQuery('Day goal.');
+});
 
-			// return bot.sendMessage(chatId, "I don't understand what you mean");
-		} catch (error) {
-			console.log(error);
-		}
-	});
+bot.action('weekends', async (ctx) => {
+	await ctx.scene.enter('weekends');
+	return ctx.answerCbQuery('Weekends.');
+});
 
-	bot.on('callback_query', async (ctx) => {
-		const chatId = ctx.message.chat.id;
-		const userId = ctx.from.id;
+bot.action('showSettings', async (ctx) => {
+	const { focusPeriod, breakPeriod, todayStreak, dayGoal, dayStreak, includeWeekends } = await db.getUserSettings(ctx.from.id);
+	const isWorkingOnWeekends = includeWeekends ? 'Yes, no day out' : 'No';
+	await ctx.reply(
+		`Focus period: ${focusPeriod} min\nBreak period: ${breakPeriod} min\nToday done: ${todayStreak} min\nDay goal: ${dayGoal} min\nDay streak: ${dayStreak} days\nWork on weekends?: ${isWorkingOnWeekends}\n`
+	);
+	return ctx.answerCbQuery('Settings');
+});
 
-		try {
-			if (ctx.data === 'startFocus') {
-				await startFocus(userId, chatId);
-			} else if (ctx.data === 'focusPeriod') {
-				await bot.sendMessage(chatId, `Current focus period: ${Users[userId].focusPeriod} minutes. Send new focus period... (15-120 minutes)`, {
-					reply_markup: { force_reply: true },
-				}).then((setGoalMsg) => {
-					bot.onReplyToMessage(chatId, setGoalMsg.message_id, async (msg) => {
-						await bot.deleteMessage(chatId, msg.message_id);
-						await bot.deleteMessage(chatId, msg.message_id - 1);
-						if (msg.text >= 15 && msg.text <= 120) {
-							Users[userId].focusPeriod = msg.text;
-							return bot.sendMessage(chatId, `Success! New focus period: ${msg.text} minutes`);
-						} else {
-							return bot.sendMessage(chatId, 'Incorrect message. Please, send focus period (15-120 minutes)');
-						}
-					});
-				});
-			} else if (ctx.data === 'breakPeriod') {
-				await bot.sendMessage(chatId, `Current break period: ${Users[userId].breakPeriod} minutes. Send new break period... (3-30 minutes)`, {
-					reply_markup: { force_reply: true },
-				}).then((setGoalMsg) => {
-					bot.onReplyToMessage(chatId, setGoalMsg.message_id, async (msg) => {
-						await bot.deleteMessage(chatId, msg.message_id);
-						await bot.deleteMessage(chatId, msg.message_id - 1);
-						if (msg.text >= 3 && msg.text <= 30) {
-							Users[userId].breakPeriod = msg.text;
-							return bot.sendMessage(chatId, `Success! New break period: ${msg.text} minutes`);
-						} else {
-							return bot.sendMessage(chatId, 'Incorrect message. Please, send break period (3-30 minutes)');
-						}
-					});
-				});
-			} else if (ctx.data === 'dayGoal') {
-				await bot.sendMessage(chatId, `Current goal: ${Users[userId].dayGoal} hours a day. Send new goal here... (1-12 hours)`, {
-					reply_markup: { force_reply: true },
-				}).then((setGoalMsg) => {
-					bot.onReplyToMessage(chatId, setGoalMsg.message_id, async (msg) => {
-						await bot.deleteMessage(chatId, msg.message_id);
-						await bot.deleteMessage(chatId, msg.message_id - 1);
-						if (msg.text >= 1 && msg.text <= 12) {
-							Users[userId].dayGoal = msg.text;
-							return bot.sendMessage(chatId, `Success! New goal: ${msg.text} hours`);
-						} else {
-							return bot.sendMessage(chatId, 'Incorrect message. Please, send amount of hours (1-12)');
-						}
-					});
-				});
-			} else if (ctx.data === 'showSettings') {
-				// TODO show all user stats
-				return;
-			} else if (ctx.data === 'closeMenu') {
-				await bot.deleteMessage(chatId, ctx.message.message_id);
-				return bot.deleteMessage(chatId, ctx.message.message_id - 1);
-			}
-		} catch (error) {
-			console.log(error);
-		}
-	});
-};
+bot.action('closeMenu', async (ctx) => {
+	await ctx.editMessageReplyMarkup();
+	await ctx.deleteMessage();
+	await ctx.answerCbQuery('Menu closed!');
+});
 
-startPomoBoto();
+function showMenuKeyboard(ctx) {
+	return ctx.reply(
+		'Menu:',
+		Markup.inlineKeyboard([
+			[Markup.button.callback('Start focus session', 'startFocus')],
+			[Markup.button.callback('Show settings', 'showSettings')],
+			[Markup.button.callback('Focus period', 'focusPeriod'), Markup.button.callback('Break period', 'breakPeriod')],
+			[Markup.button.callback('Day goal', 'dayGoal'), Markup.button.callback('Weekends', 'weekends')],
+			[Markup.button.callback('Close menu', 'closeMenu')],
+		])
+	);
+}
+
+bot.launch();
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
