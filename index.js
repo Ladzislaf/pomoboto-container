@@ -50,7 +50,7 @@ bot.action('startFocus', async (ctx) => {
 				return;
 			}
 			await ctx.editMessageText(`Focus started! (${--timerValue}/${focusPeriod} min)`, { message_id: data.message_id });
-		}, 1 * 1000);
+		}, 60 * 1000);
 	});
 	await ctx.answerCbQuery('Focus!');
 
@@ -63,7 +63,7 @@ bot.action('startFocus', async (ctx) => {
 					return;
 				}
 				await ctx.editMessageText(`Focus finished! Have a break! (${--timerValue}/${breakPeriod} min)`, { message_id: data.message_id });
-			}, 1 * 1000);
+			}, 60 * 1000);
 		});
 		await db.updateUserSettings(ctx.from.id, 'todayStreak', todayStreak + focusPeriod);
 		if (todayStreak + focusPeriod >= dayGoal) {
@@ -72,8 +72,8 @@ bot.action('startFocus', async (ctx) => {
 		}
 		setTimeout(async () => {
 			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
-		}, breakPeriod * 1 * 1000);
-	}, focusPeriod * 1 * 1000);
+		}, breakPeriod * 60 * 1000);
+	}, focusPeriod * 60 * 1000);
 });
 
 bot.action('focusPeriod', async (ctx) => {
@@ -98,7 +98,7 @@ bot.action('showSettings', async (ctx) => {
 	await ctx.reply(
 		`Focus period: ${focusPeriod} min\nBreak period: ${breakPeriod} min\nToday done: ${todayStreak} min\nDay goal: ${dayGoal} min\nDay streak: ${dayStreak} days\nWork on weekends?: ${isWorkingOnWeekends}\n`
 	);
-	return ctx.answerCbQuery('Settings');
+	return ctx.answerCbQuery('Settings.');
 });
 
 bot.action('closeMenu', async (ctx) => {
