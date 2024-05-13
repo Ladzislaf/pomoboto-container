@@ -11,13 +11,16 @@ changeFocusPeriodScene.on(message('text'), async (ctx) => {
 	const newFocusPeriod = Number(ctx.message.text);
 	if (newFocusPeriod >= 15 && newFocusPeriod <= 120) {
 		await db.updateUserSettings(ctx.from.id, 'focusPeriod', newFocusPeriod);
+		await ctx.deleteMessage();
 		await ctx.reply(`Success! New focus period: ${newFocusPeriod} minutes`);
 		return ctx.scene.leave();
 	} else {
+		await ctx.deleteMessage();
 		return ctx.reply('Incorrect message. Please, send new focus period (15-120 minutes)');
 	}
 });
 changeFocusPeriodScene.on(message(), async (ctx) => {
+	await ctx.deleteMessage();
 	return ctx.reply('Incorrect message. Please, send new focus period (15-120 minutes)');
 });
 
@@ -30,13 +33,16 @@ changeBreakPeriodScene.on(message('text'), async (ctx) => {
 	const newBreakPeriod = Number(ctx.message.text);
 	if (newBreakPeriod >= 3 && newBreakPeriod <= 30) {
 		await db.updateUserSettings(ctx.from.id, 'breakPeriod', newBreakPeriod);
+		await ctx.deleteMessage();
 		await ctx.reply(`Success! New break period: ${newBreakPeriod} minutes`);
 		return ctx.scene.leave();
 	} else {
+		await ctx.deleteMessage();
 		return ctx.reply('Incorrect message. Please, send new break period (3-30 minutes)');
 	}
 });
 changeBreakPeriodScene.on(message(), async (ctx) => {
+	await ctx.deleteMessage();
 	return ctx.reply('Incorrect message. Please, send new break period (3-30 minutes)');
 });
 
@@ -49,13 +55,16 @@ changeDayGoalScene.on(message('text'), async (ctx) => {
 	const newDayGoal = Number(ctx.message.text);
 	if (newDayGoal >= 60 && newDayGoal <= 720) {
 		await db.updateUserSettings(ctx.from.id, 'dayGoal', newDayGoal);
+		await ctx.deleteMessage();
 		await ctx.reply(`Success! New goal: ${newDayGoal} minutes a day`);
 		return ctx.scene.leave();
 	} else {
+		await ctx.deleteMessage();
 		return ctx.reply('Incorrect message. Please, send new goal (60-720 minutes)');
 	}
 });
 changeDayGoalScene.on(message(), async (ctx) => {
+	await ctx.deleteMessage();
 	return ctx.reply('Incorrect message. Please, send new goal (60-720 minutes)');
 });
 
