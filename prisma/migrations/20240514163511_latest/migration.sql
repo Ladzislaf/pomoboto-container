@@ -1,12 +1,3 @@
-/*
-  Warnings:
-
-  - You are about to drop the `PomoUser` table. If the table is not empty, all the data it contains will be lost.
-
-*/
--- DropTable
-DROP TABLE "PomoUser";
-
 -- CreateTable
 CREATE TABLE "user" (
     "id" TEXT NOT NULL,
@@ -25,13 +16,10 @@ CREATE TABLE "user" (
 CREATE TABLE "completed_days" (
     "id" SERIAL NOT NULL,
     "userId" TEXT NOT NULL,
-    "day" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "day" DATE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "completed_days_pkey" PRIMARY KEY ("id")
 );
-
--- CreateIndex
-CREATE UNIQUE INDEX "completed_days_userId_key" ON "completed_days"("userId");
 
 -- AddForeignKey
 ALTER TABLE "completed_days" ADD CONSTRAINT "completed_days_userId_fkey" FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
