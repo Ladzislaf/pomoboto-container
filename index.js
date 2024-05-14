@@ -67,7 +67,6 @@ bot.action('startFocus', async (ctx) => {
 		});
 		await db.updateUserSettings(ctx.from.id, 'todayStreak', todayStreak + focusPeriod);
 		if (todayStreak + focusPeriod >= dayGoal) {
-			Users[userId].daysStreak++;
 			await db.updateUserSettings(ctx.from.id, 'dayStreak', dayStreak + 1);
 		}
 		setTimeout(async () => {
