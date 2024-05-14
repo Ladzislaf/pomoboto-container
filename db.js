@@ -9,7 +9,8 @@ class DataBase {
 			breakPeriod: 'breakPeriod',
 			dayGoal: 'dayGoal',
 			todayStreak: 'todayStreak',
-			dayStreak: 'dayStreak',
+			currentDayStreak: 'currentDayStreak',
+			bestDayStreak: 'bestDayStreak',
 			includeWeekends: 'includeWeekends',
 		};
 	}
@@ -18,7 +19,7 @@ class DataBase {
 		const isUserExists = await this.isUserExists(userId);
 		if (!isUserExists) {
 			try {
-				await prisma.pomoUser.create({
+				await prisma.user.create({
 					data: {
 						id: `${userId}`,
 					},
@@ -38,12 +39,12 @@ class DataBase {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
 			try {
-				await prisma.pomoUser.update({
+				await prisma.user.update({
 					where: {
 						id: `${userId}`,
 					},
 					data: {
-						[fieldToUpdate]: (fieldToUpdate === 'includeWeekends') ? Boolean(newValue) : +newValue,
+						[fieldToUpdate]: fieldToUpdate === 'includeWeekends' ? Boolean(newValue) : +newValue,
 					},
 				});
 			} catch (error) {
@@ -58,7 +59,7 @@ class DataBase {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
 			try {
-				await prisma.pomoUser.delete({
+				await prisma.user.delete({
 					where: {
 						id: `${userId}`,
 					},
@@ -72,7 +73,7 @@ class DataBase {
 	}
 
 	async isUserExists(userId) {
-		const findUser = await prisma.pomoUser.findUnique({ where: { id: `${userId}` } });
+		const findUser = await prisma.user.findUnique({ where: { id: `${userId}` } });
 		return Boolean(findUser);
 	}
 
@@ -80,7 +81,7 @@ class DataBase {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
 			try {
-				const foundUser = await prisma.pomoUser.findUnique({
+				const foundUser = await prisma.user.findUnique({
 					where: {
 						id: `${userId}`,
 					},
@@ -96,10 +97,74 @@ class DataBase {
 
 	async getAllUsers() {
 		try {
-			const allUsers = await prisma.pomoUser.findMany();
+			const allUsers = await prisma.user.findMany();
 			return allUsers;
 		} catch (error) {
 			console.error(error);
+		}
+	}
+
+	async isCompletedToday(userId) {
+		const isUserExists = await this.isUserExists(userId);
+		if (isUserExists) {
+			const foundCompletedDay = await prisma.completed_days.findFirst({
+				where: {
+					userId: `${userId}`,
+					day: new Date(),
+				},
+			});
+			if (foundCompletedDay) {
+				console.log(`User with id: ${userId} is already completed today.[isTodayCompleted]`);
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			console.log(`User with id: ${userId} was not found.[isTodayCompleted]`);
+			return false;
+		}
+	}
+
+	// :true - successfully added today completion
+	// :false - user is already completed today
+	async completeDay(userId) {
+		const isUserExists = await this.isUserExists(userId);
+		if (isUserExists) {
+			const isUserCompletedToday = await this.isCompletedToday(userId);
+			if (!isUserCompletedToday) {
+				await prisma.completed_days.create({
+					data: {
+						userId: `${userId}`,
+					},
+				});
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			console.log(`User with id: ${userId} was not found.[completeDay]`);
+			return false;
+		}
+	}
+
+	async getCompletedDays(userId) {
+		const isUserExists = await this.isUserExists(userId);
+		if (isUserExists) {
+			try {
+				const foundDays = await prisma.completed_days.findMany({
+					where: {
+						userId: `${userId}`,
+					},
+					orderBy: {
+						day: 'desc',
+					},
+				});
+				return foundDays;
+			} catch (error) {
+				console.error(error);
+			}
+		} else {
+			console.log(`User with id: ${userId} was not found.[getCompletedDays]`);
 		}
 	}
 }

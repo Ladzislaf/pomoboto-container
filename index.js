@@ -3,7 +3,7 @@ import streakJob from './cron.js';
 import dotenv from 'dotenv';
 import server from './server.js';
 import db from './db.js';
-import textSettingScene  from './scenes/textSettingScene.js';
+import textSettingScene from './scenes/textSettingScene.js';
 import weekendsScene from './scenes/weekendsScene.js';
 
 dotenv.config();
@@ -17,8 +17,7 @@ bot.use(session());
 bot.use(stage.middleware());
 
 bot.telegram.setMyCommands([
-	{ command: '/start', description: 'Restart bot' },
-	{ command: '/menu', description: 'Display bot menu' },
+	{ command: '/start', description: 'Open the bot menu' },
 	{ command: '/playlist', description: 'Spotify playlist' },
 ]);
 
@@ -26,11 +25,6 @@ bot.start(async (ctx) => {
 	await ctx.deleteMessage();
 	await showMenuKeyboard(ctx);
 	await db.createNewUser(ctx.from.id);
-});
-
-bot.command('menu', async (ctx) => {
-	await ctx.deleteMessage();
-	return showMenuKeyboard(ctx);
 });
 
 bot.command('playlist', async (ctx) => {
@@ -41,7 +35,7 @@ bot.command('playlist', async (ctx) => {
 });
 
 bot.action('startFocus', async (ctx) => {
-	const { focusPeriod, breakPeriod, todayStreak, dayGoal, dayStreak } = await db.getUserSettings(ctx.from.id);
+	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak } = await db.getUserSettings(ctx.from.id);
 	await ctx.reply(`Focus started! (${focusPeriod}/${focusPeriod} min)`).then((data) => {
 		let timerValue = focusPeriod;
 		const timer = setInterval(async () => {
@@ -67,7 +61,12 @@ bot.action('startFocus', async (ctx) => {
 		});
 		await db.updateUserSettings(ctx.from.id, 'todayStreak', todayStreak + focusPeriod);
 		if (todayStreak + focusPeriod >= dayGoal) {
-			await db.updateUserSettings(ctx.from.id, 'dayStreak', dayStreak + 1);
+			if (await db.completeDay(ctx.from.id)) {
+				await db.updateUserSettings(ctx.from.id, 'currentDayStreak', currentDayStreak + 1);
+				if (currentDayStreak + 1 > bestDayStreak) {
+					await db.updateUserSettings(ctx.from.id, 'bestDayStreak', currentDayStreak + 1);
+				}
+			}
 		}
 		setTimeout(async () => {
 			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
@@ -92,16 +91,34 @@ bot.action('weekends', async (ctx) => {
 });
 
 bot.action('showSettings', async (ctx) => {
-	const { focusPeriod, breakPeriod, todayStreak, dayGoal, dayStreak, includeWeekends } = await db.getUserSettings(ctx.from.id);
+	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak, includeWeekends } = await db.getUserSettings(ctx.from.id);
 	const isWorkingOnWeekends = includeWeekends ? 'Yes, no day out' : 'No';
 	await ctx.reply(
-		`Focus period: ${focusPeriod} min\nBreak period: ${breakPeriod} min\nToday done: ${todayStreak} min\nDay goal: ${dayGoal} min\nDay streak: ${dayStreak} days\nWork on weekends?: ${isWorkingOnWeekends}\n`
+		`Focus period | ${focusPeriod} [min]\n` +
+			`Break period | ${breakPeriod} [min]\n` +
+			`Today done | ${todayStreak} [min]\n` +
+			`Day goal | ${dayGoal} [min]\n` +
+			`Current day streak | ${currentDayStreak} [day]\n` +
+			`Best day streak | ${bestDayStreak} [day]\n` +
+			`Work on weekends | ${isWorkingOnWeekends}\n`
 	);
 	return ctx.answerCbQuery('Settings.');
 });
 
+bot.action('showCompletedDays', async (ctx) => {
+	const completedDays = await db.getCompletedDays(ctx.from.id);
+	let daysCounter = 0;
+	let message = ''
+	while (daysCounter < 10 && completedDays[daysCounter]) {
+		message += `${completedDays[daysCounter].day.toDateString()}\n`;
+		daysCounter++;
+	}
+	if (completedDays.length > 10) { message += `... [${completedDays.length - daysCounter} more]` }
+	await ctx.reply(message ? 'Useful days:\n' + message : 'There is no useful days yet.');
+	await ctx.answerCbQuery('Useful days.');
+});
+
 bot.action('closeMenu', async (ctx) => {
-	await ctx.editMessageReplyMarkup();
 	await ctx.deleteMessage();
 	await ctx.answerCbQuery('Menu closed!');
 });
@@ -111,7 +128,7 @@ function showMenuKeyboard(ctx) {
 		'Menu:',
 		Markup.inlineKeyboard([
 			[Markup.button.callback('Start focus session', 'startFocus')],
-			[Markup.button.callback('Show settings', 'showSettings')],
+			[Markup.button.callback('Show settings', 'showSettings'), Markup.button.callback('Useful days', 'showCompletedDays')],
 			[Markup.button.callback('Focus period', 'focusPeriod'), Markup.button.callback('Break period', 'breakPeriod')],
 			[Markup.button.callback('Day goal', 'dayGoal'), Markup.button.callback('Weekends', 'weekends')],
 			[Markup.button.callback('Close menu', 'closeMenu')],

@@ -15,10 +15,10 @@ const cronJob = new CronJob(
 				console.log('CronJob yesterday date:', yesterday.toUTCString());
 				if (yesterday.getDay() === 6 || yesterday.getDay() === 0) {
 					if (includeWeekends) {
-						await db.updateUserSettings(user.id, 'dayStreak', 0);
+						await db.updateUserSettings(user.id, 'currentDayStreak', 0);
 					}
 				} else {
-					await db.updateUserSettings(user.id, 'dayStreak', 0);
+					await db.updateUserSettings(user.id, 'currentDayStreak', 0);
 				}
 			}
 		})
