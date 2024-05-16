@@ -17,8 +17,14 @@ bot.use(session());
 bot.use(stage.middleware());
 
 bot.telegram.setMyCommands([
-	{ command: '/start', description: 'Open the bot menu' },
-	{ command: '/playlist', description: 'Spotify playlist' },
+	{
+		command: '/start',
+		description: 'Open the bot menu',
+	},
+	{
+		command: '/playlist',
+		description: 'Spotify playlist',
+	},
 ]);
 
 bot.start(async (ctx) => {
@@ -35,6 +41,10 @@ bot.command('playlist', async (ctx) => {
 });
 
 bot.action('startFocus', async (ctx) => {
+	if (ctx.session.focusState === 'busy') {
+		return ctx.answerCbQuery('Already started.');
+	}
+	ctx.session.focusState = 'busy';
 	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak } = await db.getUserSettings(ctx.from.id);
 	await ctx.reply(`Focus started! (${focusPeriod}/${focusPeriod} min)`).then((data) => {
 		let timerValue = focusPeriod;
@@ -56,7 +66,9 @@ bot.action('startFocus', async (ctx) => {
 					clearInterval(timer);
 					return;
 				}
-				await ctx.editMessageText(`Focus finished! Have a break! (${--timerValue}/${breakPeriod} min)`, { message_id: data.message_id });
+				await ctx.editMessageText(`Focus finished! Have a break! (${--timerValue}/${breakPeriod} min)`, {
+					message_id: data.message_id,
+				});
 			}, 60 * 1000);
 		});
 		await db.updateUserSettings(ctx.from.id, 'todayStreak', todayStreak + focusPeriod);
@@ -69,6 +81,7 @@ bot.action('startFocus', async (ctx) => {
 			}
 		}
 		setTimeout(async () => {
+            delete ctx.session.focusState;
 			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
 		}, breakPeriod * 60 * 1000);
 	}, focusPeriod * 60 * 1000);
@@ -108,12 +121,14 @@ bot.action('showSettings', async (ctx) => {
 bot.action('showCompletedDays', async (ctx) => {
 	const completedDays = await db.getCompletedDays(ctx.from.id);
 	let daysCounter = 0;
-	let message = ''
+	let message = '';
 	while (daysCounter < 10 && completedDays[daysCounter]) {
 		message += `${completedDays[daysCounter].day.toDateString()}\n`;
 		daysCounter++;
 	}
-	if (completedDays.length > 10) { message += `... [${completedDays.length - daysCounter} more]` }
+	if (completedDays.length > 10) {
+		message += `... [${completedDays.length - daysCounter} more]`;
+	}
 	await ctx.reply(message ? 'Useful days:\n' + message : 'There is no useful days yet.');
 	await ctx.answerCbQuery('Useful days.');
 });
