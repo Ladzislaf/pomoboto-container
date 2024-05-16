@@ -73,8 +73,12 @@ class DataBase {
 	}
 
 	async isUserExists(userId) {
-		const findUser = await prisma.user.findUnique({ where: { id: `${userId}` } });
-		return Boolean(findUser);
+		try {
+			const findUser = await prisma.user.findUnique({ where: { id: `${userId}` } });
+			return Boolean(findUser);
+		} catch (error) {
+			console.error(error);
+		}
 	}
 
 	async getUserSettings(userId) {
