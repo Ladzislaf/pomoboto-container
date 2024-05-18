@@ -166,6 +166,19 @@ async function changeSettingAction(ctx, setting, scene) {
 	return ctx.answerCbQuery(setting);
 }
 
-bot.launch(() => console.log('Pomoboto bot is running.'));
+if (process.env.LOCAL_MODE === 'on') {
+	bot.launch(() => console.log('Pomoboto bot is running locally.'));
+} else {
+	bot.launch(
+		{
+			webhook: {
+				domain: process.env.DOMAIN,
+				port: process.env.PORT || 443,
+			},
+		},
+		() => console.log('Pomoboto bot is running on webhook.')
+	);
+}
+
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));

@@ -111,7 +111,7 @@ class DataBase {
 	async isCompletedToday(userId) {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
-			const foundCompletedDay = await prisma.completed_days.findFirst({
+			const foundCompletedDay = await prisma.completedDays.findFirst({
 				where: {
 					userId: `${userId}`,
 					day: new Date(),
@@ -136,7 +136,7 @@ class DataBase {
 		if (isUserExists) {
 			const isUserCompletedToday = await this.isCompletedToday(userId);
 			if (!isUserCompletedToday) {
-				await prisma.completed_days.create({
+				await prisma.completedDays.create({
 					data: {
 						userId: `${userId}`,
 					},
@@ -155,7 +155,7 @@ class DataBase {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
 			try {
-				const foundDays = await prisma.completed_days.findMany({
+				const foundDays = await prisma.completedDays.findMany({
 					where: {
 						userId: `${userId}`,
 					},
