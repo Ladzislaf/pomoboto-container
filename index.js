@@ -33,9 +33,12 @@ bot.start(async (ctx) => {
 
 bot.command('playlist', async (ctx) => {
 	await ctx.deleteMessage();
-	return ctx.reply('To focus better, you can use a spotify [Playlist](https://open.spotify.com/playlist/0vvXsWCC9xrXsKd4FyS8kM?si=83d9e98fa29a48cd)', {
-		parse_mode: 'MarkdownV2',
-	});
+	return ctx.reply(
+		'To focus better, you can use a spotify [Playlist](https://open.spotify.com/playlist/0vvXsWCC9xrXsKd4FyS8kM?si=83d9e98fa29a48cd)',
+		{
+			parse_mode: 'MarkdownV2',
+		}
+	);
 });
 
 bot.action('startFocus', async (ctx) => {
@@ -43,7 +46,9 @@ bot.action('startFocus', async (ctx) => {
 		return ctx.answerCbQuery('Already started.');
 	}
 	ctx.session.focusState = 'busy';
-	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak } = await db.getUserSettings(ctx.from.id);
+	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak } = await db.getUserSettings(
+		ctx.from.id
+	);
 	await ctx.reply(`Focus started! (${focusPeriod}/${focusPeriod} min)`).then((data) => {
 		let timerValue = focusPeriod;
 		const timer = setInterval(async () => {
@@ -51,7 +56,9 @@ bot.action('startFocus', async (ctx) => {
 				clearInterval(timer);
 				return;
 			}
-			await ctx.editMessageText(`Focus started! (${--timerValue}/${focusPeriod} min)`, { message_id: data.message_id });
+			await ctx.editMessageText(`Focus started! (${--timerValue}/${focusPeriod} min)`, {
+				message_id: data.message_id,
+			});
 		}, 60 * 1000);
 	});
 	await ctx.answerCbQuery('Focus!');
@@ -79,7 +86,7 @@ bot.action('startFocus', async (ctx) => {
 			}
 		}
 		setTimeout(async () => {
-            delete ctx.session.focusState;
+			delete ctx.session.focusState;
 			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
 		}, breakPeriod * 60 * 1000);
 	}, focusPeriod * 60 * 1000);
@@ -102,7 +109,8 @@ bot.action('weekends', async (ctx) => {
 });
 
 bot.action('showSettings', async (ctx) => {
-	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak, includeWeekends } = await db.getUserSettings(ctx.from.id);
+	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak, includeWeekends } =
+		await db.getUserSettings(ctx.from.id);
 	const isWorkingOnWeekends = includeWeekends ? 'Yes, no day out' : 'No';
 	await ctx.reply(
 		`Focus period | ${focusPeriod} [min]\n` +
@@ -141,7 +149,10 @@ function showMenuKeyboard(ctx) {
 		'Menu:',
 		Markup.inlineKeyboard([
 			[Markup.button.callback('Start focus session', 'startFocus')],
-			[Markup.button.callback('Show settings', 'showSettings'), Markup.button.callback('Useful days', 'showCompletedDays')],
+			[
+				Markup.button.callback('Show settings', 'showSettings'),
+				Markup.button.callback('Useful days', 'showCompletedDays'),
+			],
 			[Markup.button.callback('Focus period', 'focusPeriod'), Markup.button.callback('Break period', 'breakPeriod')],
 			[Markup.button.callback('Day goal', 'dayGoal'), Markup.button.callback('Weekends', 'weekends')],
 			[Markup.button.callback('Close menu', 'closeMenu')],
@@ -155,6 +166,6 @@ async function changeSettingAction(ctx, setting, scene) {
 	return ctx.answerCbQuery(setting);
 }
 
-bot.launch().then(() => console.log('Bot is running.'));
+bot.launch(() => console.log('Pomoboto bot is running.'));
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
