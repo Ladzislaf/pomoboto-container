@@ -155,6 +155,6 @@ async function changeSettingAction(ctx, setting, scene) {
 	return ctx.answerCbQuery(setting);
 }
 
-bot.launch();
+bot.launch().then(() => console.log('Bot is running.'));
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
