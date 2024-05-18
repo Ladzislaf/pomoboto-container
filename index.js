@@ -1,13 +1,11 @@
 import { Telegraf, Markup, Scenes, session } from 'telegraf';
 import streakJob from './cron.js';
 import dotenv from 'dotenv';
-import server from './server.js';
 import db from './db.js';
 import textSettingScene from './scenes/textSettingScene.js';
 import weekendsScene from './scenes/weekendsScene.js';
 
 dotenv.config();
-server.start();
 streakJob.start();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
