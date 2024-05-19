@@ -44,7 +44,7 @@ class DataBase {
 						id: `${userId}`,
 					},
 					data: {
-						[fieldToUpdate]: fieldToUpdate === 'includeWeekends' ? Boolean(newValue) : +newValue,
+						[fieldToUpdate]: fieldToUpdate === 'includeWeekends' ? Boolean(newValue) : Number(newValue),
 					},
 				});
 			} catch (error) {
@@ -99,29 +99,24 @@ class DataBase {
 		}
 	}
 
-	async getAllUsers() {
-		try {
-			const allUsers = await prisma.user.findMany();
-			return allUsers;
-		} catch (error) {
-			console.error(error);
-		}
-	}
-
 	async isCompletedToday(userId) {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
-			const foundCompletedDay = await prisma.completedDays.findFirst({
-				where: {
-					userId: `${userId}`,
-					day: new Date(),
-				},
-			});
-			if (foundCompletedDay) {
-				console.log(`User with id: ${userId} is already completed today.[isTodayCompleted]`);
-				return true;
-			} else {
-				return false;
+			try {
+				const foundCompletedDay = await prisma.completedDays.findFirst({
+					where: {
+						userId: `${userId}`,
+						day: new Date(),
+					},
+				});
+				if (foundCompletedDay) {
+					console.log(`User with id: ${userId} is already completed today.[isTodayCompleted]`);
+					return true;
+				} else {
+					return false;
+				}
+			} catch (error) {
+				console.error(error);
 			}
 		} else {
 			console.log(`User with id: ${userId} was not found.[isTodayCompleted]`);
@@ -134,16 +129,20 @@ class DataBase {
 	async completeDay(userId) {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
-			const isUserCompletedToday = await this.isCompletedToday(userId);
-			if (!isUserCompletedToday) {
-				await prisma.completedDays.create({
-					data: {
-						userId: `${userId}`,
-					},
-				});
-				return true;
-			} else {
-				return false;
+			try {
+				const isUserCompletedToday = await this.isCompletedToday(userId);
+				if (!isUserCompletedToday) {
+					await prisma.completedDays.create({
+						data: {
+							userId: `${userId}`,
+						},
+					});
+					return true;
+				} else {
+					return false;
+				}
+			} catch (error) {
+				console.error(error);
 			}
 		} else {
 			console.log(`User with id: ${userId} was not found.[completeDay]`);
