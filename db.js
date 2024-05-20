@@ -81,6 +81,15 @@ class DataBase {
 		}
 	}
 
+	async getAllUsers() {
+		try {
+			const allUsers = await prisma.user.findMany();
+			return allUsers;
+		} catch (error) {
+			console.error(error);
+		}
+	}
+
 	async getUserSettings(userId) {
 		const isUserExists = await this.isUserExists(userId);
 		if (isUserExists) {
