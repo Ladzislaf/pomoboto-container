@@ -45,6 +45,7 @@ export async function changeSettingAction(ctx, setting, scene) {
 export function setFocusInterval(ctx, focusPeriod, messageId) {
 	let timerValue = focusPeriod;
 	return setInterval(async () => {
+		console.log('[focusInterval]');
 		if (timerValue === 0) {
 			clearInterval(ctx.session.focusInterval);
 			delete ctx.session.focusInterval;
@@ -59,9 +60,11 @@ export function setFocusInterval(ctx, focusPeriod, messageId) {
 export function setfocusTimeout(ctx, userSettings) {
 	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak } = userSettings;
 	return setTimeout(async () => {
+		delete ctx.session.focusTimeout;
 		await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
 			let timerValue = breakPeriod;
 			ctx.session.breakInterval = setInterval(async () => {
+				console.log('[breakInterval]');
 				if (timerValue === 0) {
 					clearInterval(ctx.session.breakInterval);
 					delete ctx.session.breakInterval;
@@ -82,8 +85,7 @@ export function setfocusTimeout(ctx, userSettings) {
 			}
 		}
 		ctx.session.breakTimeout = setTimeout(async () => {
-			delete ctx.session.focusStarted;
-			delete ctx.session.focusTimeout;
+			ctx.session.focusStarted = false;
 			delete ctx.session.breakTimeout;
 			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
 		}, breakPeriod * 60 * 1000);

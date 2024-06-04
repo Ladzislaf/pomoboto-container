@@ -27,13 +27,15 @@ bot.start(async (ctx) => {
 });
 
 bot.command('cancel', async (ctx) => {
+	console.log('[Cancel command] focusInterval', Boolean(ctx.session.focusInterval));
+	console.log('[Cancel command] focusTimeout', Boolean(ctx.session.focusTimeout));
 	await ctx.deleteMessage();
 	if (ctx.session.focusTimeout && ctx.session.focusInterval) {
-		clearTimeout(ctx.session.focusTimeout);
+		ctx.session.focusStarted = false;
 		clearInterval(ctx.session.focusInterval);
-		delete ctx.session.focusTimeout;
+		clearTimeout(ctx.session.focusTimeout);
 		delete ctx.session.focusInterval;
-		delete ctx.session.focusStarted;
+		delete ctx.session.focusTimeout;
 		return ctx.reply('Focus canceled.');
 	} else {
 		return ctx.reply('The focus has not started yet.');
@@ -41,13 +43,15 @@ bot.command('cancel', async (ctx) => {
 });
 
 bot.command('skip', async (ctx) => {
+	console.log('[Skip command] breakInterval', Boolean(ctx.session.breakInterval));
+	console.log('[Skip command] breakTimeout', Boolean(ctx.session.breakTimeout));
 	await ctx.deleteMessage();
 	if (ctx.session.breakTimeout && ctx.session.breakInterval) {
+		ctx.session.focusStarted = false;
 		clearTimeout(ctx.session.breakTimeout);
 		clearInterval(ctx.session.breakInterval);
-		delete ctx.session.breakTimeout;
 		delete ctx.session.breakInterval;
-		delete ctx.session.focusStarted;
+		delete ctx.session.breakTimeout;
 		return ctx.reply('Break skiped.');
 	} else {
 		return ctx.reply('The break has not started yet.');
@@ -65,7 +69,8 @@ bot.command('playlist', async (ctx) => {
 });
 
 bot.action('startFocus', async (ctx) => {
-	await db.createNewUser(ctx.from.id);
+	console.log('[Action startFocus before] focusInterval', Boolean(ctx.session.focusInterval));
+	console.log('[Action startFocus before] focusTimeout', Boolean(ctx.session.focusTimeout));
 	if (ctx.session.focusStarted) {
 		return ctx.answerCbQuery('Already started.');
 	}
@@ -76,6 +81,8 @@ bot.action('startFocus', async (ctx) => {
 		ctx.session.focusInterval = setFocusInterval(ctx, userSettings.focusPeriod, data.message_id);
 	});
 	ctx.session.focusTimeout = setfocusTimeout(ctx, userSettings);
+	console.log('[Action startFocus] focusInterval', Boolean(ctx.session.focusInterval));
+	console.log('[Action startFocus] focusTimeout', Boolean(ctx.session.focusTimeout));
 });
 
 bot.action('focusPeriod', async (ctx) => {
