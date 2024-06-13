@@ -1,12 +1,11 @@
+import 'dotenv/config';
 import { Telegraf, Scenes, session } from 'telegraf';
 import streakJob from './cron.js';
-import dotenv from 'dotenv';
-import db from './db.js';
 import textSettingScene from './scenes/textSettingScene.js';
 import weekendsScene from './scenes/weekendsScene.js';
 import { botCommands, showMenuKeyboard, setFocusInterval, setfocusTimeout, changeSettingAction } from './utils.js';
+import db, { redis } from './db.js';
 
-dotenv.config();
 streakJob.start();
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
@@ -27,15 +26,17 @@ bot.start(async (ctx) => {
 });
 
 bot.command('cancel', async (ctx) => {
-	console.log('[Cancel command] focusInterval', Boolean(ctx.session.focusInterval));
-	console.log('[Cancel command] focusTimeout', Boolean(ctx.session.focusTimeout));
+	const focusTimeout = await redis.get(`${ctx.from.id}:focusTimeout`);
+	const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
+	console.log('[Cancel command] focusInterval', Boolean(focusTimeout));
+	console.log('[Cancel command] focusTimeout', Boolean(focusInterval));
 	await ctx.deleteMessage();
-	if (ctx.session.focusTimeout && ctx.session.focusInterval) {
+	if (focusTimeout && focusInterval) {
 		ctx.session.focusStarted = false;
-		clearInterval(ctx.session.focusInterval);
-		clearTimeout(ctx.session.focusTimeout);
-		delete ctx.session.focusInterval;
-		delete ctx.session.focusTimeout;
+		clearInterval(focusInterval);
+		clearTimeout(focusTimeout);
+		redis.del(`${ctx.from.id}:focusTimeout`);
+		redis.del(`${ctx.from.id}:focusInterval`);
 		return ctx.reply('Focus canceled.');
 	} else {
 		return ctx.reply('The focus has not started yet.');
@@ -43,15 +44,17 @@ bot.command('cancel', async (ctx) => {
 });
 
 bot.command('skip', async (ctx) => {
-	console.log('[Skip command] breakInterval', Boolean(ctx.session.breakInterval));
-	console.log('[Skip command] breakTimeout', Boolean(ctx.session.breakTimeout));
+	const breakTimeout = await redis.get(`${ctx.from.id}:breakTimeout`);
+	const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
+	console.log('[Skip command] breakInterval', Boolean(breakInterval));
+	console.log('[Skip command] breakTimeout', Boolean(breakTimeout));
 	await ctx.deleteMessage();
-	if (ctx.session.breakTimeout && ctx.session.breakInterval) {
+	if (breakTimeout && breakInterval) {
 		ctx.session.focusStarted = false;
-		clearTimeout(ctx.session.breakTimeout);
-		clearInterval(ctx.session.breakInterval);
-		delete ctx.session.breakInterval;
-		delete ctx.session.breakTimeout;
+		clearInterval(breakInterval);
+		clearTimeout(breakTimeout);
+		redis.del(`${ctx.from.id}:breakTimeout`);
+		redis.del(`${ctx.from.id}:breakInterval`);
 		return ctx.reply('Break skiped.');
 	} else {
 		return ctx.reply('The break has not started yet.');
@@ -69,8 +72,10 @@ bot.command('playlist', async (ctx) => {
 });
 
 bot.action('startFocus', async (ctx) => {
-	console.log('[Action startFocus before] focusInterval', Boolean(ctx.session.focusInterval));
-	console.log('[Action startFocus before] focusTimeout', Boolean(ctx.session.focusTimeout));
+	const focusTimeout = await redis.get(`${ctx.from.id}:focusTimeout`);
+	const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
+	console.log('[Action startFocus before] focusInterval', Boolean(focusInterval));
+	console.log('[Action startFocus before] focusTimeout', Boolean(focusTimeout));
 	if (ctx.session.focusStarted) {
 		return ctx.answerCbQuery('Already started.');
 	}
@@ -78,11 +83,11 @@ bot.action('startFocus', async (ctx) => {
 	const userSettings = await db.getUserSettings(ctx.from.id);
 	await ctx.answerCbQuery('Focus!');
 	await ctx.reply(`Focus started! (${userSettings.focusPeriod}/${userSettings.focusPeriod} min)`).then((data) => {
-		ctx.session.focusInterval = setFocusInterval(ctx, userSettings.focusPeriod, data.message_id);
+		const interval = setFocusInterval(ctx, userSettings.focusPeriod, data.message_id);
+		redis.set(`${ctx.from.id}:focusInterval`, interval);
 	});
-	ctx.session.focusTimeout = setfocusTimeout(ctx, userSettings);
-	console.log('[Action startFocus] focusInterval', Boolean(ctx.session.focusInterval));
-	console.log('[Action startFocus] focusTimeout', Boolean(ctx.session.focusTimeout));
+	const timeout = setfocusTimeout(ctx, userSettings);
+	redis.set(`${ctx.from.id}:focusTimeout`, timeout);
 });
 
 bot.action('focusPeriod', async (ctx) => {

@@ -1,5 +1,5 @@
 import { Markup } from 'telegraf';
-import db from './db.js';
+import db, { redis } from './db.js';
 
 export const botCommands = [
 	{
@@ -45,10 +45,11 @@ export async function changeSettingAction(ctx, setting, scene) {
 export function setFocusInterval(ctx, focusPeriod, messageId) {
 	let timerValue = focusPeriod;
 	return setInterval(async () => {
-		console.log('[focusInterval]');
-		if (timerValue === 0) {
-			clearInterval(ctx.session.focusInterval);
-			delete ctx.session.focusInterval;
+		if (timerValue <= 0) {
+			const focusInterval = await redis.get(`${ctx.from.id}:focusInterval`);
+			console.log('[setFocusIntreval timerValue = 0] focusInterval from redis:', focusInterval);
+			clearInterval(focusInterval);
+			redis.del(`${ctx.from.id}:focusInterval`);
 			return;
 		}
 		await ctx.editMessageText(`Focus started! (${--timerValue}/${focusPeriod} min)`, {
@@ -60,20 +61,22 @@ export function setFocusInterval(ctx, focusPeriod, messageId) {
 export function setfocusTimeout(ctx, userSettings) {
 	const { focusPeriod, breakPeriod, todayStreak, dayGoal, currentDayStreak, bestDayStreak } = userSettings;
 	return setTimeout(async () => {
-		delete ctx.session.focusTimeout;
+		redis.del(`${ctx.from.id}:focusTimeout`);
 		await ctx.reply(`Focus finished! Have a break! (${breakPeriod}/${breakPeriod} min)`).then((data) => {
 			let timerValue = breakPeriod;
-			ctx.session.breakInterval = setInterval(async () => {
-				console.log('[breakInterval]');
-				if (timerValue === 0) {
-					clearInterval(ctx.session.breakInterval);
-					delete ctx.session.breakInterval;
+			const interval = setInterval(async () => {
+				if (timerValue <= 0) {
+					const breakInterval = await redis.get(`${ctx.from.id}:breakInterval`);
+					console.log('[setfocusTimeout timerValue = 0] breakInterval from redis:', breakInterval);
+					clearInterval(breakInterval);
+					redis.del(`${ctx.from.id}:breakInterval`);
 					return;
 				}
 				await ctx.editMessageText(`Focus finished! Have a break! (${--timerValue}/${breakPeriod} min)`, {
 					message_id: data.message_id,
 				});
 			}, 60 * 1000);
+			redis.set(`${ctx.from.id}:breakInterval`, interval);
 		});
 		await db.updateUserSettings(ctx.from.id, 'todayStreak', todayStreak + focusPeriod);
 		if (todayStreak + focusPeriod >= dayGoal) {
@@ -84,10 +87,11 @@ export function setfocusTimeout(ctx, userSettings) {
 				}
 			}
 		}
-		ctx.session.breakTimeout = setTimeout(async () => {
+		const timeout = setTimeout(async () => {
 			ctx.session.focusStarted = false;
-			delete ctx.session.breakTimeout;
+			redis.del(`${ctx.from.id}:breakTimeout`);
 			return ctx.reply(`Break finished! Start a new focus session from the menu now!`);
 		}, breakPeriod * 60 * 1000);
+		redis.set(`${ctx.from.id}:breakTimeout`, timeout);
 	}, focusPeriod * 60 * 1000);
 }

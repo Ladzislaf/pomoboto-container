@@ -1,6 +1,9 @@
 import { PrismaClient } from '@prisma/client';
+import Redis from 'ioredis';
 
 const prisma = new PrismaClient();
+
+export const redis = new Redis(process.env.REDIS_URL);
 
 class DataBase {
 	constructor() {
